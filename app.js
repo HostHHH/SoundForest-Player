@@ -305,20 +305,32 @@ function getAudioDuration(fileOrBlob) {
       resolved = true;
       clearTimeout(timer);
       tempAudio.removeEventListener('loadedmetadata', onLoaded);
+      tempAudio.removeEventListener('durationchange', onDurationChange);
       tempAudio.removeEventListener('error', onError);
       tempAudio.src = '';
       URL.revokeObjectURL(tempUrl);
     };
 
     const timer = setTimeout(() => {
-      cleanup();
-      resolve(0);
-    }, 4500);
-
-    const onLoaded = () => {
-      const dur = (tempAudio.duration && isFinite(tempAudio.duration)) ? tempAudio.duration : 0;
+      const dur = (tempAudio.duration && isFinite(tempAudio.duration) && tempAudio.duration > 0) ? tempAudio.duration : 0;
       cleanup();
       resolve(dur);
+    }, 6000);
+
+    const onLoaded = () => {
+      const dur = (tempAudio.duration && isFinite(tempAudio.duration) && tempAudio.duration > 0) ? tempAudio.duration : 0;
+      if (dur > 0 && dur !== Infinity) {
+        cleanup();
+        resolve(dur);
+      }
+    };
+
+    const onDurationChange = () => {
+      const dur = (tempAudio.duration && isFinite(tempAudio.duration) && tempAudio.duration > 0) ? tempAudio.duration : 0;
+      if (dur > 0 && dur !== Infinity) {
+        cleanup();
+        resolve(dur);
+      }
     };
 
     const onError = () => {
@@ -326,7 +338,9 @@ function getAudioDuration(fileOrBlob) {
       resolve(0);
     };
 
+    tempAudio.preload = 'metadata';
     tempAudio.addEventListener('loadedmetadata', onLoaded);
+    tempAudio.addEventListener('durationchange', onDurationChange);
     tempAudio.addEventListener('error', onError);
     tempAudio.src = tempUrl;
   });
@@ -1095,63 +1109,134 @@ async function performOnlineSearch() {
   `;
 
   try {
-    const jamendoBase = `https://api.jamendo.com/v3.0/tracks/?client_id=3dce8b55&format=jsonpretty&limit=25&audioformat=mp32&include=musicinfo`;
-    
-    let res = await fetch(`${jamendoBase}&search=${encodeURIComponent(query)}`);
-    let data = await res.json();
-
-    if (!data.results || data.results.length === 0) {
-      res = await fetch(`${jamendoBase}&namesearch=${encodeURIComponent(query)}`);
-      data = await res.json();
+    let tracks = await searchJamendo(query);
+    if (!tracks || tracks.length === 0) {
+      tracks = await searchArchive(query);
     }
 
-    if (!data.results || data.results.length === 0) {
-      res = await fetch(`${jamendoBase}&tags=${encodeURIComponent(query)}`);
-      data = await res.json();
-    }
-
-    if (data.results && data.results.length > 0) {
-      const normalized = data.results.map((t) => ({
-        id: t.id,
-        name: t.name,
-        artist_name: t.artist_name,
-        duration: isFinite(t.duration) ? Number(t.duration) : 0,
-        album_image: t.image || t.album_image || 'icon-192.png',
-        audio: t.audio || t.audiodownload || '',
-        isSnippet: false
-      }));
-      renderOnlineResults(normalized);
-    } else {
-      await fallbackSearch(query);
-    }
-  } catch (err) {
-    await fallbackSearch(query);
-  }
-}
-
-async function fallbackSearch(query) {
-  try {
-    const itunesUrl = `https://itunes.apple.com/search?term=${encodeURIComponent(query)}&entity=song&limit=25`;
-    const res = await fetch(itunesUrl);
-    const data = await res.json();
-
-    if (data.results && data.results.length > 0) {
-      const normalized = data.results.map((item) => ({
-        id: item.trackId,
-        name: item.trackName,
-        artist_name: item.artistName,
-        duration: 30,
-        album_image: item.artworkUrl100 || item.artworkUrl60 || 'icon-192.png',
-        audio: item.previewUrl,
-        isSnippet: true
-      }));
-      renderOnlineResults(normalized);
+    if (tracks && tracks.length > 0) {
+      renderOnlineResults(tracks);
     } else {
       renderOnlineEmpty();
     }
   } catch (err) {
-    renderOnlineEmpty();
+    try {
+      const fallbackTracks = await searchArchive(query);
+      if (fallbackTracks && fallbackTracks.length > 0) {
+        renderOnlineResults(fallbackTracks);
+      } else {
+        renderOnlineEmpty();
+      }
+    } catch (e) {
+      renderOnlineEmpty();
+    }
   }
+}
+
+async function searchJamendo(query) {
+  const primaryUrl = `https://api.jamendo.com/v3.0/tracks/?client_id=85bfb204&format=json&limit=20&search=${encodeURIComponent(query)}`;
+  try {
+    const res = await fetch(primaryUrl);
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.headers && data.headers.status === 'success' && Array.isArray(data.results) && data.results.length > 0) {
+        const valid = parseJamendoResults(data.results);
+        if (valid.length > 0) return valid;
+      }
+    }
+  } catch (e) {}
+
+  const fallbackCid = '3dce8b55';
+  const urls = [
+    `https://api.jamendo.com/v3.0/tracks/?client_id=${fallbackCid}&format=json&limit=20&search=${encodeURIComponent(query)}`,
+    `https://api.jamendo.com/v3.0/tracks/?client_id=${fallbackCid}&format=json&limit=20&namesearch=${encodeURIComponent(query)}`,
+    `https://api.jamendo.com/v3.0/tracks/?client_id=${fallbackCid}&format=json&limit=20&tags=${encodeURIComponent(query)}`
+  ];
+
+  for (const url of urls) {
+    try {
+      const res = await fetch(url);
+      if (!res.ok) continue;
+      const data = await res.json();
+      if (data && data.headers && data.headers.status === 'success' && Array.isArray(data.results) && data.results.length > 0) {
+        const valid = parseJamendoResults(data.results);
+        if (valid.length > 0) return valid;
+      }
+    } catch (e) {}
+  }
+
+  return [];
+}
+
+function parseJamendoResults(results) {
+  if (!Array.isArray(results)) return [];
+  return results
+    .filter((t) => (t.audio && t.audio.trim() !== '') || (t.audiodownload && t.audiodownload.trim() !== ''))
+    .map((t) => ({
+      id: t.id,
+      name: t.name || 'Untitled Track',
+      artist_name: t.artist_name || 'Jamendo Artist',
+      duration: isFinite(t.duration) && t.duration > 0 ? Number(t.duration) : 0,
+      album_image: t.image || t.album_image || 'icon-192.png',
+      audio: t.audio || t.audiodownload || '',
+      isSnippet: false
+    }));
+}
+
+async function searchArchive(query) {
+  const url = `https://archive.org/advancedsearch.php?q=${encodeURIComponent(query)}+AND+mediatype:audio&sort[]=downloads+desc&output=json`;
+  const res = await fetch(url);
+  if (!res.ok) return [];
+  const data = await res.json();
+  const docs = (data && data.response && data.response.docs) ? data.response.docs.slice(0, 15) : [];
+  if (docs.length === 0) return [];
+
+  const metaPromises = docs.map(async (doc) => {
+    try {
+      const metaRes = await fetch(`https://archive.org/metadata/${doc.identifier}`);
+      if (!metaRes.ok) return null;
+      const metaData = await metaRes.json();
+      const files = (metaData.files || []).filter((f) => 
+        f.name && 
+        f.private !== 'true' && 
+        f.private !== true &&
+        (f.name.toLowerCase().endsWith('.mp3') || f.name.toLowerCase().endsWith('.ogg') || f.name.toLowerCase().endsWith('.m4a') || f.name.toLowerCase().endsWith('.flac') || f.format === 'VBR MP3' || f.format === 'MP3')
+      );
+      if (files.length === 0) return null;
+      const file = files[0];
+      let dur = 0;
+      if (file.length) {
+        if (typeof file.length === 'string' && file.length.includes(':')) {
+          const parts = file.length.split(':').map(Number);
+          if (parts.length === 2) dur = parts[0] * 60 + parts[1];
+          else if (parts.length === 3) dur = parts[0] * 3600 + parts[1] * 60 + parts[2];
+        } else {
+          dur = parseFloat(file.length) || 0;
+        }
+      }
+      const title = file.title || doc.title || file.name.replace(/\.[^/.]+$/, '');
+      const artist = file.artist || file.creator || doc.creator || 'Internet Archive';
+      const cleanTitle = Array.isArray(title) ? title[0] : title;
+      const cleanArtist = Array.isArray(artist) ? artist.join(', ') : artist;
+      const audioUrl = `https://archive.org/download/${doc.identifier}/${encodeURIComponent(file.name)}`;
+      const imgUrl = `https://archive.org/services/img/${doc.identifier}`;
+
+      return {
+        id: doc.identifier,
+        name: cleanTitle || 'Archive Audio',
+        artist_name: cleanArtist || 'Internet Archive',
+        duration: Math.round(dur),
+        album_image: imgUrl,
+        audio: audioUrl,
+        isSnippet: false
+      };
+    } catch (e) {
+      return null;
+    }
+  });
+
+  const parsed = await Promise.all(metaPromises);
+  return parsed.filter((t) => t && t.audio && t.audio.trim() !== '');
 }
 
 function renderOnlineEmpty() {
@@ -1173,16 +1258,15 @@ function renderOnlineResults(tracks) {
 
     const thumbSrc = track.album_image || track.image || 'icon-192.png';
     const audioUrl = track.audio || track.audiodownload || '';
-    const isSnippet = Boolean(track.isSnippet);
 
     item.innerHTML = `
       <div class="online-track-left">
-        <img class="online-thumb" src="${thumbSrc}" alt="${escapeHtml(track.name)}" loading="lazy">
+        <img class="online-thumb" src="${thumbSrc}" alt="${escapeHtml(track.name)}" loading="lazy" onerror="this.onerror=null;this.src='icon-192.png'">
         <div class="online-track-info">
           <div class="online-track-title">${escapeHtml(track.name)}</div>
           <div class="online-track-subtitle">
             <span class="online-track-artist">${escapeHtml(track.artist_name || 'Unknown Artist')}</span>
-            ${isSnippet ? '<span class="track-badge-snippet">Preview (30s)</span>' : '<span class="track-badge-full">Full Track</span>'}
+            <span class="track-badge-full">Full Track</span>
             <span class="online-track-duration">${formatTime(track.duration)}</span>
           </div>
         </div>
@@ -1289,7 +1373,7 @@ async function downloadAndSaveOnlineTrack(track, audioUrl, coverUrl, buttonEl) {
 
     let computedDuration = await getAudioDuration(blob);
     if (!computedDuration || !isFinite(computedDuration) || computedDuration <= 0) {
-      computedDuration = isFinite(track.duration) && track.duration > 0 ? track.duration : 0;
+      computedDuration = isFinite(track.duration) && track.duration > 0 ? Number(track.duration) : 0;
     }
 
     const saved = await saveTrack(blob, {
