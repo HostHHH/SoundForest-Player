@@ -1,0 +1,32 @@
+{
+  "name": "SoundPulse Music Player",
+  "short_name": "SoundPulse",
+  "description": "Standalone offline Progressive Web App music player with local IndexedDB audio storage.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0D1F17",
+  "theme_color": "#0D1F17",
+  "categories": ["music", "audio", "entertainment", "utilities"],
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

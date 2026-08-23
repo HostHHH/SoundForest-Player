@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#0D1F17">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="SoundPulse">
+  <meta name="description" content="A complete, offline Progressive Web App music player with local storage, custom playlists, online search, and themes.">
+  <title>SoundPulse — Offline PWA Music Player</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/svg+xml" href="icon.svg">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body data-theme="cyber-moss">
+  <div class="app-wrapper">
+    <header class="app-header">
+      <div class="brand-container">
+        <div class="brand-logo-icon">
+          <svg viewBox="0 0 24 24">
+            <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/>
+          </svg>
+        </div>
+        <h1 class="brand-title">SoundPulse</h1>
+      </div>
+      <div class="header-actions">
+        <button class="btn-header-action" id="btnThemes" title="Customize App Theme">
+          <svg viewBox="0 0 24 24">
+            <path d="M12 3c-4.97 0-9 4.03-9 9 0 2.12.74 4.07 1.97 5.61L4.35 19.4c-.39.39-.39 1.02 0 1.41.39.39 1.02.39 1.41 0l1.9-1.9C9.28 19.59 10.59 20 12 20c4.97 0 9-4.03 9-9s-4.03-9-9-9zm0 15c-3.31 0-6-2.69-6-6s2.69-6 6-6 6 2.69 6 6-2.69 6-6 6zm-4.5-6c.83 0 1.5-.67 1.5-1.5S8.33 9 7.5 9 6 9.67 6 10.5 6.67 12 7.5 12zm4.5-3c.83 0 1.5-.67 1.5-1.5S12.83 6 12 6s-1.5.67-1.5 1.5S11.17 9 12 9zm4.5 3c.83 0 1.5-.67 1.5-1.5s-.67-1.5-1.5-1.5-1.5.67-1.5 1.5.67 1.5 1.5 1.5z"/>
+          </svg>
+          <span>Themes</span>
+        </button>
+        <label class="btn-add-tracks" id="addTracksBtn" title="Add audio tracks from your device">
+          <svg viewBox="0 0 24 24">
+            <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+          </svg>
+          <span>Add Tracks</span>
+          <input type="file" id="fileInput" class="file-input-hidden" multiple accept="audio/*">
+        </label>
+      </div>
+    </header>
+
+    <main class="main-content-grid">
+      <section class="player-card" aria-label="Audio Player">
+        <div class="artwork-wrapper">
+          <div class="artwork-glow" id="artworkGlow"></div>
+          <div class="artwork-disc" id="artworkDisc">
+            <img id="artworkCoverImg" class="artwork-img-cover" src="" alt="" style="display: none;">
+            <div class="disc-center">
+              <svg viewBox="0 0 24 24">
+                <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/>
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <div class="track-meta">
+          <h2 class="track-title" id="trackTitle">No Track Selected</h2>
+          <p class="track-artist" id="trackArtist">Add songs or search online</p>
+        </div>
+
+        <div class="progress-section">
+          <div class="progress-bar-container">
+            <input type="range" class="progress-slider" id="progressBar" min="0" max="100" value="0" step="0.1" aria-label="Playback progress">
+          </div>
+          <div class="time-row">
+            <span id="currentTime">00:00</span>
+            <span id="totalDuration">00:00</span>
+          </div>
+        </div>
+
+        <div class="controls-row">
+          <button class="control-btn" id="shuffleBtn" title="Shuffle playback" aria-label="Shuffle">
+            <svg viewBox="0 0 24 24">
+              <path d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z"/>
+            </svg>
+          </button>
+
+          <button class="control-btn" id="prevBtn" title="Previous track" aria-label="Previous">
+            <svg viewBox="0 0 24 24">
+              <path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/>
+            </svg>
+          </button>
+
+          <button class="play-pause-btn" id="playPauseBtn" title="Play or pause" aria-label="Play">
+            <svg id="playIcon" viewBox="0 0 24 24">
+              <path d="M8 5v14l11-7z"/>
+            </svg>
+            <svg id="pauseIcon" viewBox="0 0 24 24" style="display: none;">
+              <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
+            </svg>
+          </button>
+
+          <button class="control-btn" id="nextBtn" title="Next track" aria-label="Next">
+            <svg viewBox="0 0 24 24">
+              <path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/>
+            </svg>
+          </button>
+
+          <button class="control-btn" id="repeatBtn" title="Repeat mode" aria-label="Repeat">
+            <span class="repeat-badge" id="repeatBadge">1</span>
+            <svg viewBox="0 0 24 24">
+              <path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z"/>
+            </svg>
+          </button>
+        </div>
+
+        <div class="volume-row">
+          <button class="volume-btn" id="volumeBtn" title="Mute/Unmute" aria-label="Volume">
+            <svg id="volumeHighIcon" viewBox="0 0 24 24">
+              <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
+            </svg>
+            <svg id="volumeMuteIcon" viewBox="0 0 24 24" style="display: none;">
+              <path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/>
+            </svg>
+          </button>
+          <input type="range" class="volume-slider" id="volumeBar" min="0" max="1" step="0.01" value="0.8" aria-label="Volume level">
+        </div>
+      </section>
+
+      <section class="playlist-card" aria-label="Library and Playlists">
+        <nav class="nav-tabs">
+          <button class="tab-btn active" id="tabBtnTracks" data-tab="tracks">
+            <svg viewBox="0 0 24 24">
+              <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/>
+            </svg>
+            <span>Tracks</span>
+          </button>
+          <button class="tab-btn" id="tabBtnPlaylists" data-tab="playlists">
+            <svg viewBox="0 0 24 24">
+              <path d="M4 10h12v2H4zm0-4h12v2H4zm0 8h8v2H4zm10 0v6l5-3z"/>
+            </svg>
+            <span>Playlists</span>
+          </button>
+          <button class="tab-btn" id="tabBtnOnline" data-tab="online">
+            <svg viewBox="0 0 24 24">
+              <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+            </svg>
+            <span>Online Search</span>
+          </button>
+        </nav>
+
+        <div class="tab-view active" id="viewTracks">
+          <div class="view-header-row">
+            <div class="view-title-wrap">
+              <h2 class="view-title">Saved Tracks</h2>
+              <span class="track-count-badge" id="trackCountBadge">0 tracks</span>
+            </div>
+          </div>
+
+          <div class="playlist-search-wrap">
+            <svg class="search-icon" viewBox="0 0 24 24">
+              <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+            </svg>
+            <input type="text" class="playlist-search-input" id="searchInput" placeholder="Search local tracks...">
+          </div>
+
+          <div class="tracklist-container" id="trackList">
+            <div class="empty-state" id="emptyState">
+              <div class="empty-state-icon">
+                <svg viewBox="0 0 24 24">
+                  <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/>
+                </svg>
+              </div>
+              <h3 class="empty-state-title">Your library is empty</h3>
+              <p class="empty-state-desc">Click "Add Tracks" to upload audio, or browse "Online Search" to download music directly into offline storage.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="tab-view" id="viewPlaylists">
+          <div id="playlistsListView">
+            <div class="view-header-row">
+              <div class="view-title-wrap">
+                <h2 class="view-title">My Playlists</h2>
+                <span class="track-count-badge" id="playlistCountBadge">0 playlists</span>
+              </div>
+              <button class="btn-secondary" id="btnNewPlaylist" title="Create a new playlist">
+                <svg viewBox="0 0 24 24">
+                  <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+                </svg>
+                <span>New Playlist</span>
+              </button>
+            </div>
+
+            <div class="playlists-grid" id="playlistsContainer">
+              <div class="empty-state" id="playlistsEmptyState">
+                <div class="empty-state-icon">
+                  <svg viewBox="0 0 24 24">
+                    <path d="M4 10h12v2H4zm0-4h12v2H4zm0 8h8v2H4zm10 0v6l5-3z"/>
+                  </svg>
+                </div>
+                <h3 class="empty-state-title">No playlists created</h3>
+                <p class="empty-state-desc">Create your first custom playlist to organize your offline music collection.</p>
+              </div>
+            </div>
+          </div>
+
+          <div id="playlistDetailView" style="display: none;">
+            <div class="playlist-detail-header">
+              <button class="btn-back-playlists" id="btnBackToPlaylists">
+                <svg viewBox="0 0 24 24">
+                  <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
+                </svg>
+                <span>Back to Playlists</span>
+              </button>
+              <div class="playlist-card-actions">
+                <button class="icon-action-btn" id="btnRenameCurrentPlaylist" title="Rename Playlist">
+                  <svg viewBox="0 0 24 24">
+                    <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
+                  </svg>
+                </button>
+                <button class="icon-action-btn btn-delete-track" id="btnDeleteCurrentPlaylist" title="Delete Playlist">
+                  <svg viewBox="0 0 24 24">
+                    <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <div class="view-header-row">
+              <div>
+                <h2 class="view-title" id="currentPlaylistTitle">Playlist Name</h2>
+                <span class="track-count-badge" id="currentPlaylistCount">0 tracks</span>
+              </div>
+              <button class="btn-secondary" id="btnPlayCurrentPlaylist">
+                <svg viewBox="0 0 24 24">
+                  <path d="M8 5v14l11-7z"/>
+                </svg>
+                <span>Play All</span>
+              </button>
+            </div>
+
+            <div class="tracklist-container" id="playlistTracksContainer"></div>
+          </div>
+        </div>
+
+        <div class="tab-view" id="viewOnline">
+          <div class="offline-banner" id="offlineBanner">
+            <svg viewBox="0 0 24 24">
+              <path d="M23.64 7c-.45-.34-4.93-3.6-11.64-3.6-1.5 0-2.8.19-3.95.49l3.41 3.41c.18-.01.36-.02.54-.02 5.09 0 8.78 2.37 9.17 2.65L23.64 7zm-5.8 4.79C16.3 10.74 14.28 10 12 10c-.57 0-1.12.05-1.65.13l2.84 2.84c1.47.2 2.82.78 3.99 1.58l.66-.76zM1.41 1.69L0 3.1l2.09 2.09C1.13 5.79.45 6.38.36 6.45L12 21.5l3.91-5.08 4.39 4.39 1.41-1.41L1.41 1.69z"/>
+            </svg>
+            <span>Online search unavailable. Working in Offline Mode.</span>
+          </div>
+
+          <div class="online-search-container">
+            <input type="text" class="online-search-input" id="onlineSearchInput" placeholder="Search free full tracks by title, artist, genre...">
+            <button class="btn-search-online" id="btnSearchOnline">
+              <svg viewBox="0 0 24 24">
+                <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+              </svg>
+              <span>Search</span>
+            </button>
+          </div>
+
+          <div class="online-results-container" id="onlineResultsContainer">
+            <div class="empty-state" id="onlineEmptyState">
+              <div class="empty-state-icon">
+                <svg viewBox="0 0 24 24">
+                  <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/>
+                </svg>
+              </div>
+              <h3 class="empty-state-title">Discover Free Full Tracks</h3>
+              <p class="empty-state-desc">Search thousands of free creative commons full tracks from Jamendo and save them directly to your device for offline playback.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div class="modal-overlay" id="themeModal">
+    <div class="modal-box">
+      <h3 class="modal-title">Select Color Theme</h3>
+      <div class="theme-grid-container" id="themeGrid"></div>
+      <div class="modal-actions">
+        <button class="btn-modal-cancel" id="btnCancelThemeModal">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="createPlaylistModal">
+    <div class="modal-box">
+      <h3 class="modal-title">Create New Playlist</h3>
+      <input type="text" class="modal-input" id="newPlaylistNameInput" placeholder="Enter playlist title..." maxlength="40">
+      <div class="modal-actions">
+        <button class="btn-modal-cancel" id="btnCancelCreatePlaylist">Cancel</button>
+        <button class="btn-modal-confirm" id="btnConfirmCreatePlaylist">Create</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="addToPlaylistModal">
+    <div class="modal-box">
+      <h3 class="modal-title">Add Track to Playlist</h3>
+      <div class="modal-playlists-list" id="modalPlaylistsList"></div>
+      <div class="modal-actions">
+        <button class="btn-modal-cancel" id="btnCancelAddToPlaylist">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="renamePlaylistModal">
+    <div class="modal-box">
+      <h3 class="modal-title">Rename Playlist</h3>
+      <input type="text" class="modal-input" id="renamePlaylistInput" placeholder="Enter new playlist name..." maxlength="40">
+      <div class="modal-actions">
+        <button class="btn-modal-cancel" id="btnCancelRenamePlaylist">Cancel</button>
+        <button class="btn-modal-confirm" id="btnConfirmRenamePlaylist">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="db.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
